@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐍 2025 尾牙麵食大抽獎 🐍</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* --- 視覺設計樣式 --- */
+        :root {
+            --primary-color: #b71c1c; /* 深紅 */
+            --accent-color: #ffd700; /* 金色 */
+            --bg-gradient: linear-gradient(135deg, #4a0000 0%, #880e4f 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--bg-gradient);
+            color: #333;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 標題區 */
+        header {
+            text-align: center;
+            padding: 20px;
+            color: var(--accent-color);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        header h1 { margin: 0; font-size: 2.5rem; letter-spacing: 2px; }
+        header p { color: #ffecb3; margin-top: 5px; font-size: 1.1rem; }
+
+        /* 主舞台 (抽獎顯示區) */
+        .main-stage {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--accent-color);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #result-display {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #fff;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            line-height: 1.4;
+        }
+
+        #draw-btn {
+            background: linear-gradient(to bottom, #ffd700, #ffca28);
+            color: #b71c1c;
+            border: none;
+            padding: 15px 60px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+
+        #draw-btn:hover { transform: scale(1.05); box-shadow: 0 0 25px #ffd700; }
+        #draw-btn:active { transform: scale(0.95); }
+        #draw-btn:disabled { background: #ccc; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* 資料儀表板 Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            width: 95%;
+            max-width: 1400px;
+            padding-bottom: 50px;
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border-top: 5px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            height: 450px; /* 固定高度讓排版整齊 */
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .count-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        /* 輸入與列表 */
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+        input:focus { border-color: var(--primary-color); }
+        
+        .add-btn { 
+            background: var(--primary-color); color: white; border: none; 
+            padding: 0 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.2rem;
+        }
+        .add-btn:hover { background-color: #8e0000; }
+
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #f0f0f0;
+            border-radius: 5px;
+            background: #fafafa;
+            padding: 5px;
+        }
+        
+        .list-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            background: white;
+            border-left: 3px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+        .list-item:hover { transform: translateX(3px); border-left-color: var(--primary-color); }
+        
+        .delete-btn {
+            background: transparent; border: none; color: #bbb;
+            cursor: pointer; font-size: 1.2rem; padding: 0 8px;
+        }
+        .delete-btn:hover { color: #d32f2f; }
+
+        /* 中獎者列表特別樣式 */
+        .winner-item {
+            background: linear-gradient(to right, #fffde7, #fff);
+            border-left: 4px solid var(--accent-color);
+            color: #e65100;
+        }
+        .winner-name { font-weight: bold; font-size: 1.1rem; }
+        .winner-prize { font-size: 0.85rem; color: #555; margin-top: 2px; }
+
+        /* 工具按鈕區 */
+        .tools { margin-bottom: 20px; display: flex; gap: 10px; }
+        .tool-btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            opacity: 0.9;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+        .tool-btn:hover { opacity: 1; transform: translateY(-2px); }
+
+        /* 捲軸美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🐍 2025 尾牙麵食大抽獎</h1>
+        <p>金蛇出洞 • 財源滾滾 • 好運一整年</p>
+    </header>
+    
+    <div class="tools">
+        <button class="tool-btn" onclick="generateMockData()" style="background-color: #009688;">🛠️ 一鍵產生測試資料</button>
+        <button class="tool-btn" onclick="resetDraw()" style="background-color: #607d8b;">🔄 重置所有抽獎</button>
+    </div>
+
+    <div class="main-stage">
+        <div id="result-display">準備抽獎...</div>
+        <button id="draw-btn">🔥 立即抽獎 🔥</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="panel">
+            <h2>
+                <span>👥 待抽名單</span>
+                <span id="emp-count" class="count-badge">0</span>
+            </h2>
+            <div class="input-group">
+                <input type="text" id="emp-name" placeholder="輸入員工姓名..." onkeydown="if(event.key==='Enter') addEmployee()">
+                <button class="add-btn" onclick="addEmployee()">+</button>
+            </div>
+            <div id="employee-list" class="list-container">載入中...</div>
+        </div>
+
+        <div class="panel">
+            <h2>
+                <span>🎁 剩餘獎品</span>
+                <span id="prize-count" class="count-badge">0</span>
+            </h2>
+            <div class="input-group">
+                <input type="text" id="prize-name" placeholder="輸入獎品名稱..." onkeydown="if(event.key==='Enter') addPrize()">
+                <button class="add-btn" onclick="addPrize()">+</button>
+            </div>
+            <div id="prize-list" class="list-container">載入中...</div>
+        </div>
+
+        <div class="panel" style="border-top-color: var(--accent-color);">
+            <h2>
+                <span>🏆 中獎榮譽榜</span>
+                <span id="winner-count" class="count-badge" style="background: var(--accent-color); color: #b71c1c;">0</span>
+            </h2>
+            <div id="winner-list" class="list-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, updateDoc, doc, onSnapshot, writeBatch, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 你的 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBxIo8ke76LsbKtc1mnidSyJTMk9iUHtDs",
+            authDomain: "project1217-ca157.firebaseapp.com",
+            projectId: "project1217-ca157",
+            storageBucket: "project1217-ca157.firebasestorage.app",
+            messagingSenderId: "120535948758",
+            appId: "1:120535948758:web:481a4574f0267215929877"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let employees = [];
+        let prizes = [];
+
+        // --- 監聽資料庫 ---
+        onSnapshot(query(collection(db, "employees")), (snapshot) => {
+            employees = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderEmployees();
+            renderWinners();
+            updateCounts();
+        });
+
+        onSnapshot(query(collection(db, "prizes")), (snapshot) => {
+            prizes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderPrizes();
+            updateCounts();
+        });
+
+        // --- 渲染畫面函式 ---
+        function renderEmployees() {
+            const list = document.getElementById("employee-list");
+            const available = employees.filter(e => !e.winner).sort((a, b) => b.timestamp - a.timestamp); // 新加入的排上面
+            
+            list.innerHTML = available.map(e => `
+                <div class="list-item">
+                    <span>${e.name}</span>
+                    <button class="delete-btn" onclick="window.deleteData('employees', '${e.id}')">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function renderPrizes() {
+            const list = document.getElementById("prize-list");
+            const available = prizes.filter(p => !p.taken).sort((a, b) => b.timestamp - a.timestamp);
+
+            list.innerHTML = available.map(p => `
+                <div class="list-item">
+                    <span>${p.name}</span>
+                    <button class="delete-btn" onclick="window.deleteData('prizes', '${p.id}')">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function renderWinners() {
+            const list = document.getElementById("winner-list");
+            // 找出已中獎者，並反轉順序(最新的中獎者在最上面)
+            const winners = employees.filter(e => e.winner).reverse(); 
+            
+            document.getElementById("winner-count").innerText = winners.length;
+            list.innerHTML = winners.map(e => `
+                <div class="list-item winner-item">
+                    <div>
+                        <div class="winner-name">🎉 ${e.name}</div>
+                        <div class="winner-prize">獲得: ${e.winPrize}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateCounts() {
+            const availableEmp = employees.filter(e => !e.winner).length;
+            const availablePrz = prizes.filter(p => !p.taken).length;
+            document.getElementById("emp-count").innerText = availableEmp;
+            document.getElementById("prize-count").innerText = availablePrz;
+        }
+
+        // --- 資料操作 (新增/刪除) ---
+        window.addEmployee = async () => {
+            const input = document.getElementById("emp-name");
+            if (!input.value.trim()) return;
+            await addDoc(collection(db, "employees"), { 
+                name: input.value.trim(), winner: false, winPrize: null, timestamp: Date.now() 
+            });
+            input.value = "";
+        }
+
+        window.addPrize = async () => {
+            const input = document.getElementById("prize-name");
+            if (!input.value.trim()) return;
+            await addDoc(collection(db, "prizes"), { 
+                name: input.value.trim(), taken: false, timestamp: Date.now() 
+            });
+            input.value = "";
+        }
+
+        window.deleteData = async (col, id) => {
+            if(confirm("確定要刪除這個項目嗎？")) {
+                await deleteDoc(doc(db, col, id));
+            }
+        }
+
+        // --- 核心：抽獎邏輯與特效 ---
+        document.getElementById("draw-btn").addEventListener("click", async () => {
+            const btn = document.getElementById("draw-btn");
+            const display = document.getElementById("result-display");
+            
+            const eligiblePeople = employees.filter(e => !e.winner);
+            const availablePrizes = prizes.filter(p => !p.taken);
+
+            if (eligiblePeople.length === 0) { alert("📋 所有人都有獎了！抽獎結束！"); return; }
+            if (availablePrizes.length === 0) { alert("📦 獎品已經發完了！"); return; }
+
+            // 鎖定按鈕
+            btn.disabled = true;
+            display.style.color = "#fff"; // 重置顏色
+
+            // 動畫跑馬燈 (持續約 2.5 秒)
+            let counter = 0;
+            const interval = setInterval(() => {
+                const rName = eligiblePeople[Math.floor(Math.random() * eligiblePeople.length)].name;
+                const rPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)].name;
+                
+                display.innerHTML = `<span style="opacity:0.8">${rName}</span><br><span style="font-size:0.6em; opacity:0.6">正在抽取...</span>`;
+                
+                counter++;
+                if(counter > 25) { 
+                    clearInterval(interval);
+                    finalizeDraw(eligiblePeople, availablePrizes);
+                }
+            }, 80);
+        });
+
+        async function finalizeDraw(people, prizePool) {
+            // 真正隨機選出得主
+            const winner = people[Math.floor(Math.random() * people.length)];
+            const prize = prizePool[Math.floor(Math.random() * prizePool.length)];
+
+            const display = document.getElementById("result-display");
+            display.style.color = "#ffd700"; // 金色字體
+            
+            // 顯示結果
+            display.innerHTML = `
+                <div style="animation: pop 0.5s;">
+                    <div style="font-size:0.6em; color:#fff; margin-bottom:5px;">恭喜</div>
+                    ${winner.name} <br>
+                    <span style="font-size:0.5em; color:#fff; display:block; margin-top:10px;">獲得 ${prize.name}</span>
+                </div>
+            `;
+
+            // 觸發彩帶 🎉
+            triggerConfetti();
+
+            // 更新資料庫 (Batch 寫入確保同步)
+            const batch = writeBatch(db);
+            const empRef = doc(db, "employees", winner.id);
+            const prizeRef = doc(db, "prizes", prize.id);
+
+            batch.update(empRef, { winner: true, winPrize: prize.name });
+            batch.update(prizeRef, { taken: true });
+
+            await batch.commit();
+            document.getElementById("draw-btn").disabled = false;
+        }
+
+        // 彩帶特效函式
+        function triggerConfetti() {
+            var duration = 3 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            var random = function(min, max) { return Math.random() * (max - min) + min; }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) { return clearInterval(interval); }
+                var particleCount = 50 * (timeLeft / duration);
+                // 左右兩邊發射
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // --- 工具：重置與假資料產生 ---
+        window.resetDraw = async () => {
+            if(!confirm("⚠️ 警告：這會清除所有中獎狀態，讓所有人重新抽獎，確定嗎？")) return;
+            
+            // 這裡如果資料量很大(>500筆)，真實專案建議分批處理，但100-200筆可以直接跑
+            const batch = writeBatch(db);
+            employees.forEach(e => batch.update(doc(db, "employees", e.id), { winner: false, winPrize: null }));
+            prizes.forEach(p => batch.update(doc(db, "prizes", p.id), { taken: false }));
+            await batch.commit();
+        }
+
+        // 產生真實姓名假資料
+        window.generateMockData = async () => {
+            if(!confirm("這會建立 120 位虛擬員工(隨機真實姓名) 與 100 份豪華獎品，確定嗎？")) return;
+            
+            const batch = writeBatch(db);
+            
+            // 1. 姓名庫
+            const lastNames = ["陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊", "許", "鄭", "謝", "郭", "洪", "曾", "邱", "廖", "賴", "徐", "周", "葉", "蘇", "莊", "呂", "江", "何", "蕭", "羅", "高", "潘", "簡", "朱", "鍾", "彭", "游", "詹", "胡", "施", "沈"];
+            const midNames = ["志", "雅", "怡", "家", "宗", "美", "淑", "建", "俊", "冠", "詩", "文", "欣", "惠", "佩", "玉", "佳", "家", "承", "思", "柏", "彥", "信", "大", "小"];
+            const endNames = ["豪", "婷", "君", "宏", "偉", "芬", "玲", "瑋", "凱", "廷", "明", "華", "憲", "賢", "宇", "安", "榮", "輝", "成", "翰", "琳", "儀", "潔", "樺", "倫"];
+
+            function getRandomName() {
+                const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+                const mid = midNames[Math.floor(Math.random() * midNames.length)];
+                const end = endNames[Math.floor(Math.random() * endNames.length)];
+                // 10% 單名，90% 雙名
+                return Math.random() > 0.1 ? (last + mid + end) : (last + end);
+            }
+
+            // 2. 建立員工 (使用 Set 避免重複名字)
+            let usedNames = new Set();
+            let count = 0;
+            while(count < 120) {
+                let name = getRandomName();
+                if(!usedNames.has(name)) {
+                    usedNames.add(name);
+                    const newRef = doc(collection(db, "employees"));
+                    batch.set(newRef, { name: name, winner: false, winPrize: null, timestamp: Date.now() });
+                    count++;
+                }
+            }
+
+            // 3. 建立獎品
+            const noodleTypes = [
+                "🍜 A5和牛紅燒牛肉麵", 
+                "🦀 北海道帝王蟹拉麵", 
+                "🍝 黑松露野菇燉飯", 
+                "🦐 波士頓龍蝦義大利麵", 
+                "🌶️ 招牌麻辣鴨血寬粉", 
+                "🍲 老母雞干貝燉雞湯麵", 
+                "🍜 冠軍清燉牛肉麵", 
+                "🥓 正宗博多豚骨拉麵", 
+                "🥢 巷口乾麵 (安慰獎)", 
+                "📦 維力炸醬麵一箱"
+            ];
+            
+            for(let i=1; i<=100; i++) {
+                const newRef = doc(collection(db, "prizes"));
+                let pName;
+                // 前3個是大獎
+                if (i <= 3) pName = `👑 董事長加碼 - ${noodleTypes[i%3]}`; 
+                else pName = noodleTypes[Math.floor(Math.random() * noodleTypes.length)];
+                
+                batch.set(newRef, { name: pName, taken: false, timestamp: Date.now() });
+            }
+
+            await batch.commit();
+            alert("✅ 資料建立完成！準備開始抽獎！");
+        }
+    </script>
+</body>
+</html>
